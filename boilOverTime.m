@@ -7,7 +7,7 @@ function [quality_final, pressure_final] = boilOverTime(V_t,mass_initial,quality
 % heat_load = 40.7; %W
 % time_duration = 5*24*3600;
 
-rho = mass_initial/V_s; %density
+rho = mass_initial/V_t; %density
 %quality_initial = 0.5;
 ui = py.CoolProp.CoolProp.PropsSI('U','D',rho,'P',pressure_initial_t,'Parahydrogen'); %initial Internal Energy
 uf = ui + (heat_load * time_duration)/mass_initial; %final Internal Energy
