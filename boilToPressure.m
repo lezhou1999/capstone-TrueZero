@@ -1,4 +1,4 @@
-function [quality_final, time_duration] = boilToPressure(V_t,mass_initial,quality_initial,pressure_initial_t,pressure_final_t)
+function [quality_final, time_duration] = boilToPressure(V_t,mass_initial,pressure_initial_t,pressure_final_t)
 %Example Constants
 % V_t = 32; %m^3
 % mass_initial=1680; %kg
@@ -6,8 +6,9 @@ function [quality_final, time_duration] = boilToPressure(V_t,mass_initial,qualit
 % pressure_inital_t = 202650; %kPa
 % heat_load = 40.7; %W
 
+%% Calculate Initial & Final States
 rho = mass_initial/V_t; %density
-quality_initial = 0.5;
+%quality_initial = 0.5;
 xf = py.CoolProp.CoolProp.PropsSI('Q','D',rho,'P',pressure_final_t,'Parahydrogen'); %final Quality
 ui = py.CoolProp.CoolProp.PropsSI('U','D',rho,'P',pressure_initial_t,'Parahydrogen'); %initial Internal Energy
 uf = py.CoolProp.CoolProp.PropsSI('U','D',rho,'P',pressure_final_t,'Parahydrogen'); %final Internal Energy
