@@ -25,6 +25,7 @@ trailer_mass_max = 2100 # kg
 station_mass_initial = 150  # kg (assuming some residual H2 in the trailer)
 trailer_mass_initial = 2100 #kg
 trailer_pressure_initial = 160000 # 
+m_station_max = 870.0 * station_max_fill_fraction 
 
 print("Starting H2 Trailer Cycle Simulation")
 
@@ -41,7 +42,7 @@ print(f"Final station pressure: {station_pressure_initial:.2f} Pa")
 # Step 2: Offload with rising pressure up to 2.5 atm
 print("\n2. Offloading with rising pressure up to 2.5 atm")
 final_pressure, final_station_mass, final_trailer_mass = offload_with_raising_pressure(
-    target_pressure, station_pressure_initial, trailer_mass_initial, station_mass_initial, station_volume, station_max_fill_fraction
+    target_pressure, station_pressure_initial, trailer_mass_initial, station_mass_initial, station_volume, m_station_max, offload_pressure, trailer_pressure_max, trailer_volume
 )
 print(f"After rising pressure offload: Station mass = {final_station_mass:.2f} kg, Trailer mass = {final_trailer_mass:.2f} kg")
 print(f"Final trailer mass: {final_trailer_mass:.2f} kg")
