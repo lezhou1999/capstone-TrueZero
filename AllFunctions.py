@@ -21,6 +21,7 @@ trailer_mass_max = 2100 # kg
 station_mass_initial = 150  # kg (assuming some residual H2 in the trailer)
 trailer_mass_initial = 2100 #kg
 trailer_pressure_initial = 160000 # 
+m_station_max = 870.0 * station_max_fill_fraction  # 95% of full mass
 
 
 def boil_to_pressure(mass_initial, pressure_initial, pressure_final):
@@ -56,7 +57,7 @@ def boil_over_time(mass_initial, pressure_initial, time_duration):
     return pressure_final, quality_final
 
 def vent_trailer(mass_initial, pressure_initial, pressure_final):
-    print(pressure_final)
+    # print(pressure_final)
     density_initial = mass_initial / trailer_volume
     
     # Calculate initial entropy
@@ -91,18 +92,28 @@ def vent_trailer(mass_initial, pressure_initial, pressure_final):
     
     return mass_final, mass_vented, mass_liq_final, mass_gas_final
 
-def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initial_trailer, m_initial_station, V_station, station_max_fill_fraction):
+def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initial_trailer, m_initial_station, V_station, m_station_max, P_station_max, P_trailer_max, V_trailer):
     # Constants
-    V_trailer = 32  # m^3
-    P_trailer_max = 1204514.0  # Pa (160 psig, 174.7 psia)
-    P_station_max = 351325  # Pa (2.5 barg, converted to Pa abs)
-    m_station_max = 870.0 * station_max_fill_fraction  # 95% of full mass
-    
+    # V_trailer = 32  # m^3
+    # P_trailer_max = 1204514.0  # Pa (160 psig, 174.7 psia)
+    # P_station_max = 351325  # Pa (2.5 barg, converted to Pa abs)
+    # m_station_max = 870.0 * station_max_fill_fraction  # 95% of full mass
+    # m_station_max = 800
+    # P_station_max = 400000
+
     dP = 1000  # Pa
     max_steps = 1000
     
     P_max = min(P_station_max, P_trailer_max)
     P = P_initial_trailer
+    
+    # print(f"Initial conditions:")
+    # print(f"  Trailer pressure: {P_initial_trailer:.2f} Pa")
+    # print(f"  Station pressure: {P_initial_station:.2f} Pa")
+    # print(f"  Trailer mass: {m_initial_trailer:.2f} kg")
+    # print(f"  Station mass: {m_initial_station:.2f} kg")
+    # print(f"  Station volume: {V_station:.2f} m³")
+    # print(f"  Station max fill fraction: {station_max_fill_fraction:.2f}")
     
     # Calculate full and empty masses
     m_trailer_empty = V_trailer * RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, P, 1, [1.0]).Output[0]
@@ -110,18 +121,23 @@ def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initia
     m_station_empty = V_station * RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, P, 1, [1.0]).Output[0]
     m_station_full = V_station * RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, P, 0, [1.0]).Output[0]
     
+    # print(f"Calculated masses:")
+    # print(f"  Trailer empty mass: {m_trailer_empty:.2f} kg")
+    # print(f"  Trailer full mass: {m_trailer_full:.2f} kg")
+    # print(f"  Station empty mass: {m_station_empty:.2f} kg")
+    # print(f"  Station full mass: {m_station_full:.2f} kg")
+    
     # Check input validity
     if m_initial_trailer <= m_trailer_empty:
-        print("Trailer is empty!")
+        print(f"Trailer is empty! Initial mass ({m_initial_trailer:.2f} kg) <= Empty mass ({m_trailer_empty:.2f} kg)")
         return P, m_initial_station, m_initial_trailer
     elif m_initial_trailer > m_trailer_full:
-        print("Trailer is overfull!")
-        return P, m_initial_station, m_initial_trailer
+        print(f"Trailer mass ({m_initial_trailer:.2f} kg) exceeds calculated full mass ({m_trailer_full:.2f} kg) at new pressure. Proceeding with transfer.")
     elif m_initial_station < m_station_empty:
-        print("Station is less than empty!")
+        print(f"Station is less than empty! Initial mass ({m_initial_station:.2f} kg) < Empty mass ({m_station_empty:.2f} kg)")
         return P, m_initial_station, m_initial_trailer
     elif m_initial_station > m_station_full:
-        print("Station is overfull!")
+        print(f"Station is overfull! Initial mass ({m_initial_station:.2f} kg) > Full mass ({m_station_full:.2f} kg)")
         return P, m_initial_station, m_initial_trailer
     
     # Initialize
@@ -141,8 +157,8 @@ def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initia
     # Stepwise pressure increase
     for step in range(max_steps):
         P2 = P + dP
-        print(f"Step {step}")
-        print(f"Pressure: {P:.1f}")
+        print(f"\nStep {step}")
+        print(f"Pressure: {P:.1f} Pa")
         
         # Calculate new energies
         u2_combined = RP.REFPROPdll("PARAHYD", "PD", "U", MASS_BASE_SI, 0, 0, P2, rho_combined, [1.0]).Output[0]
@@ -161,6 +177,12 @@ def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initia
         m2_station = m_station + m_transfer
         
         m2_trailer_min = V_trailer * RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, P2, 1, [1.0]).Output[0]
+        
+        # print(f"Updated masses:")
+        # print(f"  Trailer: {m2_trailer:.2f} kg")
+        # print(f"  Station: {m2_station:.2f} kg")
+        # print(f"  Minimum trailer mass: {m2_trailer_min:.2f} kg")
+        # print(f"  Maximum station mass: {m_station_max:.2f} kg")
         
         # Check stop conditions
         if P2 >= P_max:
@@ -185,12 +207,13 @@ def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initia
         if step + 1 >= max_steps:
             print("Step Limit Reached")
     
-    print(f"station mass: {m_station:.12f}")
-    print(f"Transferred mass: {m_transferred:.2f} kg")
-    print(f"station pressure: {P:.1f}")
-    print(f"max pressure: {P_max:.1f}")
-    print(f"max station mass: {m_station_max:.2f}")
-    print(f"min trailer mass: {m2_trailer_min:.2f}")
+    # print(f"\nFinal results:")
+    # print(f"Station mass: {m_station:.12f} kg")
+    # print(f"Transferred mass: {m_transferred:.2f} kg")
+    # print(f"Station pressure: {P:.1f} Pa")
+    # print(f"Max pressure: {P_max:.1f} Pa")
+    # print(f"Max station mass: {m_station_max:.2f} kg")
+    # print(f"Min trailer mass: {m2_trailer_min:.2f} kg")
     
     return P, m_station, m_trailer
 
@@ -215,7 +238,7 @@ def offload_const_pressure(trailer_mass_initial, station_mass_initial, pressure,
     mass_transfer_needed = mass_station_max - station_mass_initial
     
     # Determine limiting factor
-    mass_transfer = min(mass_transfer_needed, mass_liquid_available, 0)
+    mass_transfer = min(mass_transfer_needed, mass_liquid_available)
     # print(mass_transfer_needed, mass_liquid_available)
     # print(f"After constant pressure offload: mass transfer = {mass_transfer:.2f} kg")
 
