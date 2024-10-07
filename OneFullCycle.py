@@ -56,12 +56,13 @@ station_max_mass = station_volume * RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BAS
 # Step 3: Offload with constant pressure at 2.5 atm (if station is not full)
 if final_station_mass < station_max_mass:
     print("\n3. Offloading with constant pressure at 2.5 atm")
-    mass_transfer, energy_added = offload_const_pressure(
+    mass_transfer, gas_vented, final_trailer_mass, final_station_mass, energy_transferred = offload_const_pressure(
         final_trailer_mass, final_station_mass, offload_pressure, station_volume, station_max_fill_fraction
     )
-    final_trailer_mass -= mass_transfer
-    final_station_mass += mass_transfer
     print(f"After constant pressure offload: Station mass = {final_station_mass:.2f} kg, Trailer mass = {final_trailer_mass:.2f} kg")
+    print(f"Mass transferred: {mass_transfer:.2f} kg")
+    print(f"Gas vented: {gas_vented:.2f} kg")
+    print(f"Energy transferred: {energy_transferred:.2f} J")
     print(f"Final trailer mass: {final_trailer_mass:.2f} kg")
     print(f"Final station mass: {final_station_mass:.2f} kg")
     print(f"Final trailer pressure: {offload_pressure:.2f} Pa")
