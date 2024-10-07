@@ -218,41 +218,39 @@ def offload_with_raising_pressure(P_initial_trailer, P_initial_station, m_initia
     return P, m_station, m_trailer
 
 def offload_const_pressure(trailer_mass_initial, station_mass_initial, pressure, station_volume, station_max_fill_fraction):
-    
     # Calculate initial trailer state
     density_trailer_initial = trailer_mass_initial / trailer_volume
     e_trailer_initial = RP.REFPROPdll("PARAHYD", "PD", "E", MASS_BASE_SI, 0, 0, pressure, density_trailer_initial, [1.0]).Output[0]
     
     # Calculate initial station state
     density_station_initial = station_mass_initial / station_volume
-    e_station_initial = RP.REFPROPdll("PARAHYD", "DP", "E", MASS_BASE_SI, 0, 0, density_station_initial, pressure, [1.0]).Output[0]
+    e_station_initial = RP.REFPROPdll("PARAHYD", "PD", "E", MASS_BASE_SI, 0, 0, pressure, density_station_initial, [1.0]).Output[0]
     
-    # Calculate maximum mass that can be transferred
-    density_gas = RP.REFPROPdll("PARAHYD", "QP", "D", MASS_BASE_SI, 0, 0, 1, pressure, [1.0]).Output[0]
+    # Calculate gas and liquid densities
+    density_gas = RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, pressure, 1, [1.0]).Output[0]
+    density_liq = RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, pressure, 0, [1.0]).Output[0]
+    
+    # Calculate mass of gas when trailer is empty and liquid available
     mass_gas_trailer_empty = trailer_volume * density_gas
     mass_liquid_available = trailer_mass_initial - mass_gas_trailer_empty
-
-    # Calculate mass needed to fill station
-    density_liq = RP.REFPROPdll("PARAHYD", "QP", "D", MASS_BASE_SI, 0, 0, 0, pressure, [1.0]).Output[0]
-    mass_station_max = station_volume * density_liq * station_max_fill_fraction
-    mass_transfer_needed = mass_station_max - station_mass_initial
     
-    # Determine limiting factor
-    mass_transfer = min(mass_transfer_needed, mass_liquid_available)
-    # print(mass_transfer_needed, mass_liquid_available)
-    # print(f"After constant pressure offload: mass transfer = {mass_transfer:.2f} kg")
-
+    # Calculate station max mass and mass transfer needed
+    station_mass_max = station_volume * density_liq * station_max_fill_fraction
+    mass_transfer_needed = min(station_mass_max - station_mass_initial, mass_liquid_available)
+    
+    # Calculate volume transferred and gas vented
+    vol_transferred = mass_transfer_needed / density_liq
+    gas_vented = vol_transferred * density_gas
+    
     # Calculate final states
-    mass_trailer_final = trailer_mass_initial - mass_transfer
-    mass_station_final = station_mass_initial + mass_transfer
+    trailer_mass_final = trailer_mass_initial - mass_transfer_needed
+    station_mass_final = station_mass_initial + mass_transfer_needed - gas_vented
     
-    e_trailer_final = RP.REFPROPdll("PARAHYD", "PD", "E", MASS_BASE_SI, 0, 0, pressure, mass_trailer_final / trailer_volume, [1.0]).Output[0]
-    e_station_final = RP.REFPROPdll("PARAHYD", "PD", "E", MASS_BASE_SI, 0, 0, pressure, mass_station_final / station_volume, [1.0]).Output[0]
-   
-    # Calculate energy required
-    energy_added = (e_trailer_final - e_trailer_initial) * mass_trailer_final
+    # Calculate energy transferred
+    e_trailer_final = RP.REFPROPdll("PARAHYD", "PD", "E", MASS_BASE_SI, 0, 0, pressure, trailer_mass_final / trailer_volume, [1.0]).Output[0]
+    energy_transferred = (e_trailer_final - e_trailer_initial) * trailer_mass_final
     
-    return mass_transfer, energy_added, #e_trailer_final, e_station_final
+    return mass_transfer_needed, gas_vented, trailer_mass_final, station_mass_final, energy_transferred
 
 def fill_trailer_const_pressure(mass_initial, mass_final, pressure, trailer_volume):
     density_initial = mass_initial / trailer_volume
