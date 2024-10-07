@@ -13,87 +13,68 @@ MASS_BASE_SI = RP.GETENUMdll(0, "MASS BASE SI").iEnum
 TRAILER_VOLUME = 32.0  # m^3
 STATION_VOLUME = 13.33  # m^3
 TIME_TRANSPORTATION = 1 * 24 * 3600  # 1 day in seconds
+station_pressure = 353312 # 2.5 atm
+time_transportation = 1 * 24 * 3600  # 1 day in seconds
 TRAILER_PRESSURE_FILL = 131000  # Pa
 station_max_fill_fraction = 0.95
-STATION_MAX_MASS = 870 * station_max_fill_fraction   # kg
 STATION_VENT_PRESSURE = 353312  # Pa (2.5 atm gauge)
-station_max_fill_fraction = 0.95
 trailer_pressure_max = 1204514.0  # Pa (160 psig, 174.7 psia)
 
+def simulate_scenario():
+    # Initial state
+    trailer_mass = 1832  # kg
+    print(f"Initial trailer mass: {trailer_mass:.2f} kg")
 
-def validate_offload(trailer_mass, station_mass_initial, station_pressure_initial):
-    # Step 1 & 2: Offload with rising pressure and constant pressure
-    print("Starting Offload with rising pressure")
-    final_pressure, final_station_mass, final_trailer_mass = offload_with_raising_pressure(
-        station_pressure_initial, station_pressure_initial, trailer_mass, 
-        station_mass_initial, STATION_VOLUME,  STATION_MAX_MASS, STATION_VENT_PRESSURE, trailer_pressure_max, TRAILER_VOLUME
-    )
-    print(f"After rising pressure offload: Station mass = {final_station_mass:.2f} kg, Trailer mass = {final_trailer_mass:.2f} kg")
-    print(f"Final trailer mass: {final_trailer_mass:.2f} kg")
-    print(f"Final station mass: {final_station_mass:.2f} kg")
-    print(f"Final trailer pressure: {final_pressure:.2f} Pa")
-    print(f"Final station pressure: {final_pressure:.2f} Pa")
-
-    # Calculate station maximum mass
-    # station_max_mass = STATION_VOLUME * RP.REFPROPdll("PARAHYD", "PQ", "D", MASS_BASE_SI, 0, 0, STATION_VENT_PRESSURE, 0, [1.0]).Output[0] * station_max_fill_fraction
-
-    if final_station_mass < STATION_MAX_MASS:
-        print(f"{final_station_mass:.2f} kg < {STATION_MAX_MASS:.2f} kg")
-        print("\n3. Offloading with constant pressure at 2.5 atm")
-        mass_transferred, mass_vented_station, station_liq_mass, station_gas_mass, trailer_liq_mass = offload_const_pressure(
-            final_trailer_mass, final_station_mass, STATION_VENT_PRESSURE, 
-            STATION_VOLUME, station_max_fill_fraction, TRAILER_VOLUME
-        )
-        final_trailer_mass -= mass_transferred
-        final_station_mass += mass_transferred
-        print(f"After constant pressure offload: Station mass = {final_station_mass:.2f} kg, Trailer mass = {final_trailer_mass:.2f} kg")
-        print(f"Final trailer mass: {final_trailer_mass:.2f} kg")
-        print(f"Final station mass: {final_station_mass:.2f} kg")
-        print(f"Final trailer pressure: {STATION_VENT_PRESSURE:.2f} Pa")
-        print(f"Final station pressure: {STATION_VENT_PRESSURE:.2f} Pa")
-    else:
-        mass_transferred=0
-        mass_vented_station=0
-        print("\n3. Skipping constant pressure offload - station is already full")
-        print(f"Final trailer mass: {final_trailer_mass:.2f} kg")
-        print(f"Final station mass: {final_station_mass:.2f} kg")
-        print(f"Final trailer pressure: {final_pressure:.2f} Pa")
-        print(f"Final station pressure: {final_pressure:.2f} Pa")
-    
-    return final_station_mass, final_trailer_mass, mass_vented_station
-
-def main():
-    # Initial conditions
-    trailer_mass_initial = 1832  # kg
-    
     # 1st Offload
-    station_mass_1 = 146  # kg
-    station_pressure_1 = 202650  # Pa (assuming 2atm absolute)
-    final_station_mass_1, trailer_mass_after_1, vented_1 = validate_offload(trailer_mass_initial, station_mass_1, station_pressure_1)
+    station_initial_mass = 146  # kg
+    station_final_mass = 763  # kg
+    station_vented = 27  # kg
+
+    print("\n1st Offload:")
+    mass_transferred, gas_vented, trailer_mass, station_mass, _ = offload_const_pressure(
+        trailer_mass, station_initial_mass, TRAILER_PRESSURE_FILL, STATION_VOLUME, station_max_fill_fraction
+    )
     
-    print("1st Offload:")
-    print(f"  Station mass increase: {final_station_mass_1 - station_mass_1:.2f} kg (Expected: 617 kg)")
-    print(f"  Mass vented: {vented_1:.2f} kg (Expected: 27 kg)")
-    
+    print(f"Calculated mass transferred: {mass_transferred:.2f} kg")
+    print(f"Calculated gas vented: {gas_vented:.2f} kg")
+    print(f"Calculated station mass after offload: {station_mass:.2f} kg")
+    print(f"Actual station mass after offload: {station_final_mass:.2f} kg")
+    print(f"Difference: {abs(station_mass - station_final_mass):.2f} kg")
+    print(f"Calculated trailer mass after offload: {trailer_mass:.2f} kg")
+
     # 2nd Offload
-    station_mass_2 = 38  # kg
-    station_pressure_2 = 202650  # Pa (assuming 2atm absolute)
-    # final_station_mass_2, trailer_mass_after_2, vented_2 = validate_offload(trailer_mass_after_1, station_mass_2, station_pressure_2)
+    station_initial_mass = 38  # kg
+    station_final_mass = 752  # kg
+    station_vented = 39  # kg
+
+    print("\n2nd Offload:")
+    mass_transferred, gas_vented, trailer_mass, station_mass, _ = offload_const_pressure(
+        trailer_mass, station_initial_mass, TRAILER_PRESSURE_FILL, STATION_VOLUME, station_max_fill_fraction
+    )
     
-    # print("\n2nd Offload:")
-    # print(f"  Station mass increase: {final_station_mass_2 - station_mass_2:.2f} kg (Expected: 714 kg)")
-    # print(f"  Mass vented: {vented_2:.2f} kg (Expected: 39 kg)")
-    
-    # # Trailer venting at plant
-    # _, mass_vented_trailer, _, _ = vent_trailer(trailer_mass_after_2, 160000, TRAILER_PRESSURE_FILL)
-    # print(f"\nTrailer venting at plant: {mass_vented_trailer:.2f} kg (Expected: 109 kg)")
-    
-    # # Trailer refill
-    # mass_change, _, _ = fill_trailer_const_pressure(trailer_mass_after_2 - mass_vented_trailer, 2014, TRAILER_PRESSURE_FILL, TRAILER_VOLUME)
-    # print(f"\nTrailer refill: {mass_change:.2f} kg (Expected: {2014 - (trailer_mass_after_2 - mass_vented_trailer):.2f} kg)")
+    print(f"Calculated mass transferred: {mass_transferred:.2f} kg")
+    print(f"Calculated gas vented: {gas_vented:.2f} kg")
+    print(f"Calculated station mass after offload: {station_mass:.2f} kg")
+    print(f"Actual station mass after offload: {station_final_mass:.2f} kg")
+    print(f"Difference: {abs(station_mass - station_final_mass):.2f} kg")
+    print(f"Calculated trailer mass after offload: {trailer_mass:.2f} kg")
+
+    # Trailer venting at plant
+    vented_mass = 109  # kg
+    print("\nTrailer Venting:")
+    trailer_mass_after_vent, mass_vented, _, _ = vent_trailer(trailer_mass, station_pressure, TRAILER_PRESSURE_FILL)
+    print(f"Calculated vented mass: {mass_vented:.2f} kg")
+    print(f"Actual vented mass: {vented_mass:.2f} kg")
+    print(f"Difference: {abs(mass_vented - vented_mass):.2f} kg")
+    print(f"Calculated trailer mass after venting: {trailer_mass_after_vent:.2f} kg")
+
+    # Trailer refill
+    final_trailer_mass = 2014  # kg
+    print("\nTrailer Refill:")
+    change_mass, _, _ = fill_trailer_const_pressure(trailer_mass_after_vent, final_trailer_mass, TRAILER_PRESSURE_FILL, TRAILER_VOLUME)
+    print(f"Calculated mass added: {change_mass:.2f} kg")
+    print(f"Actual mass added: {final_trailer_mass - trailer_mass_after_vent:.2f} kg")
+    print(f"Difference: {abs(change_mass - (final_trailer_mass - trailer_mass_after_vent)):.2f} kg")
 
 if __name__ == "__main__":
-    main()
-
-
-    # Make a table showing the results. how much left the trailer and how much recieved at the station and the difference lost mass
+    simulate_scenario()
