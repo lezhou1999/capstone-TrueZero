@@ -80,15 +80,15 @@ def run_study(study_id, num_stations, station_mass_initial, station_pressure_ini
         # Step 4: Offload with constant pressure (if station is not full)
         if final_station_mass < station_max_mass:
             print("Starting offload with constant pressure")
-            mass_transfer, energy_added = offload_const_pressure(
+            mass_transfer, gas_vented, final_trailer_mass, final_station_mass, energy_added = offload_const_pressure(
                 final_trailer_mass, final_station_mass, final_pressure, 
                 STATION_VOLUME, STATION_MAX_FILL_FRACTION
             )
             print(f"Mass transferred during constant pressure: {mass_transfer:.2f} kg")
+            print(f"Gas vented during constant pressure: {gas_vented:.2f} kg")
             print(f"Energy added during constant pressure: {energy_added:.2f} J")
             
-            final_trailer_mass -= mass_transfer
-            final_station_mass += mass_transfer
+            total_mass_vented += gas_vented
         else:
             print("Skipping constant pressure offload - station is already full")
         
